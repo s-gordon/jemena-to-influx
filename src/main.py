@@ -73,6 +73,7 @@ def do_it():
                 res.raise_for_status()
                 if "true" in res.text:
                     periodic_data = get_periodic_data(s, BASE_URL)
+                    latest_interval = get_latest_interval(periodic_data)
                     break
 
                 if i == 9:
@@ -88,8 +89,25 @@ def do_it():
         else:
             logging.info("Had latest data")
 
-        now_dt = datetime.datetime.now()
         influx_data = []
+        # 2021-04-20:17
+        half_hour_sections = int(latest_interval.split(":")[-1])
+
+        now_dt = pytz.utc.localize(
+            datetime.datetime.utcnow(), is_dst=None
+        ).astimezone(tz)
+
+        threshold_dt = (
+            datetime.datetime(
+                day=now_dt.day,
+                month=now_dt.month,
+                year=now_dt.year,
+                hour=0,
+                minute=0,
+                second=0,
+            )
+            + datetime.timedelta(minutes=(half_hour_sections * 30))
+        )
 
         for i, usage in enumerate(
             periodic_data["selectedPeriod"]["consumptionData"]["peak"]
@@ -106,7 +124,7 @@ def do_it():
                 + datetime.timedelta(hours=i)
             )
 
-            if measurement_dt > now_dt:
+            if measurement_dt > threshold_dt:
                 break
 
             logging.info(f"{measurement_dt}: {usage}")
