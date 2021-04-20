@@ -1,0 +1,4 @@
+influxdb-client==1.16.0
+requests==2.25.1
+beautifulsoup4==4.9.3
+pytz==2021.1
