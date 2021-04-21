@@ -1,9 +1,11 @@
+import datetime
 import json
 import logging
 from os import environ
 from pathlib import Path
-from typing import Collection
+from typing import Any, Collection, Dict, Union
 
+import pytz
 import requests
 from requests import Session, cookies
 from requests.cookies import RequestsCookieJar
@@ -15,16 +17,43 @@ PERSIST_FILE = environ.get(
 )
 
 
-def do_login(user: str, password: str, s: Session, base_url: str):
-    logging.info(f"Logging in as {user}")
-    data = {
-        "login_email": user,
-        "login_password": password,
-        "submit": "Sign+In",
-    }
-    res = s.post(f"{base_url}/login_security_check", data=data)
-    res.raise_for_status()
-    save_cookies(s)
+def build_influx_measurements(
+    tz: Any,
+    periodic_data: Dict[str, Any],
+    measurement_base_dt: datetime.datetime,
+    threshold_dt: datetime.datetime,
+):
+    assert threshold_dt.tzinfo is None
+    influx_data = []
+
+    for i, usage in enumerate(
+        periodic_data["selectedPeriod"]["consumptionData"]["peak"]
+    ):
+        measurement_dt = (
+            datetime.datetime(
+                day=measurement_base_dt.day,
+                month=measurement_base_dt.month,
+                year=measurement_base_dt.year,
+                hour=0,
+                minute=0,
+                second=0,
+            )
+            + datetime.timedelta(hours=i)
+        )
+        if measurement_dt > threshold_dt:
+            break
+
+        logging.info(f"{measurement_dt}: {usage}")
+        ts = tz.localize(measurement_dt).isoformat("T")
+        influx_data.append(
+            {
+                "measurement": "GridUsage",
+                "time": ts,
+                "fields": {"kWH": float(usage)},
+            }
+        )
+
+    return influx_data
 
 
 def create_session(user_agent: str = "python/requests") -> Session:

@@ -2,17 +2,19 @@ import datetime
 import logging
 from os import environ
 from time import sleep
+from typing import Any, Collection, Dict, Union
 
 import pytz
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from src.electricity_outlook import (
+    do_login,
     get_latest_interval,
     get_periodic_data,
     trigger_latest_data_fetch,
 )
-from src.util import create_session, do_login
+from src.util import build_influx_measurements, create_session
 
 
 logging.basicConfig(
@@ -22,14 +24,14 @@ logging.basicConfig(
 )
 
 BASE_URL = environ.get("BASE_URL", "https://electricityoutlook.jemena.com.au")
-USERNAME = environ["USERNAME"]
-PASSWORD = environ["PASSWORD"]
+JEMENA_USERNAME = environ["JEMENA_USERNAME"]
+JEMENA_PASSWORD = environ["JEMENA_PASSWORD"]
 USERAGENT = environ.get(
     "USERAGENT",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36",
 )
 
-INFLUX_BUCKET = environ.get("INFLUX_BUCKET", "power-usage")
+INFLUX_BUCKET = environ.get("INFLUX_BUCKET", "jemena")
 
 CHECK_INTERVAL = 3600
 
@@ -41,11 +43,7 @@ def do_it():
     tz = pytz.timezone("Australia/Melbourne")
 
     while True:
-        res = s.get(f"{BASE_URL}/electricityView/index")
-        must_login = "Sign In" in res.text
-
-        if must_login:
-            do_login(USERNAME, PASSWORD, s, BASE_URL)
+        do_login(JEMENA_USERNAME, JEMENA_PASSWORD, s, BASE_URL)
 
         periodic_data = get_periodic_data(s, BASE_URL)
         latest_interval = get_latest_interval(periodic_data)
@@ -89,19 +87,18 @@ def do_it():
         else:
             logging.info("Had latest data")
 
-        influx_data = []
         # 2021-04-20:17
         half_hour_sections = int(latest_interval.split(":")[-1])
 
-        now_dt = pytz.utc.localize(
+        measurement_base_dt = pytz.utc.localize(
             datetime.datetime.utcnow(), is_dst=None
         ).astimezone(tz)
 
         threshold_dt = (
             datetime.datetime(
-                day=now_dt.day,
-                month=now_dt.month,
-                year=now_dt.year,
+                day=measurement_base_dt.day,
+                month=measurement_base_dt.month,
+                year=measurement_base_dt.year,
                 hour=0,
                 minute=0,
                 second=0,
@@ -109,33 +106,9 @@ def do_it():
             + datetime.timedelta(minutes=(half_hour_sections * 30))
         )
 
-        for i, usage in enumerate(
-            periodic_data["selectedPeriod"]["consumptionData"]["peak"]
-        ):
-            measurement_dt = (
-                datetime.datetime(
-                    day=now_dt.day,
-                    month=now_dt.month,
-                    year=now_dt.year,
-                    hour=0,
-                    minute=0,
-                    second=0,
-                )
-                + datetime.timedelta(hours=i)
-            )
-
-            if measurement_dt > threshold_dt:
-                break
-
-            logging.info(f"{measurement_dt}: {usage}")
-            ts = tz.localize(measurement_dt).isoformat("T")
-            influx_data.append(
-                {
-                    "measurement": "GridUsage",
-                    "time": ts,
-                    "fields": {"kWH": float(usage)},
-                }
-            )
+        influx_data = build_influx_measurements(
+            tz, periodic_data, measurement_base_dt, threshold_dt
+        )
 
         logging.info("submitting stats to Influx")
         logging.info(influx_data)

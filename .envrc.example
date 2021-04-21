@@ -1,10 +1,10 @@
-export INFLUXDB_V2_TOKEN=set-me
-export INFLUXDB_V2_URL=set-me
-export INFLUXDB_V2_ORG=set-me
-export INFLUXDB_V2_SSL_CA_CERT=set-me
+INFLUXDB_V2_TOKEN=set-me
+INFLUXDB_V2_URL=set-me
+INFLUXDB_V2_ORG=set-me
+INFLUXDB_V2_SSL_CA_CERT=set-me
 
-export PERSIST_FILE=set-me
-export USERNAME=set-me
-export PASSWORD=set-me
+PERSIST_FILE=set-me
+JEMENA_USERNAME=set-me
+JEMENA_PASSWORD=set-me
 
-export INFLUX_BUCKET=set-me
+INFLUX_BUCKET=set-me

@@ -1,0 +1,8 @@
+version: "3.7"
+services:
+  poller:
+    image: cgspeck/jemena-to-influx:latest
+    container_name: jemena-poller
+    restart: unless-stopped
+    network_mode: bridge
+    env_file: env
