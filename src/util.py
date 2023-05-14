@@ -53,6 +53,87 @@ def build_influx_measurements(
             }
         )
 
+    for i, usage in enumerate(
+        periodic_data["selectedPeriod"]["consumptionData"]["generation"]
+    ):
+        measurement_dt = (
+            datetime.datetime(
+                day=measurement_base_dt.day,
+                month=measurement_base_dt.month,
+                year=measurement_base_dt.year,
+                hour=0,
+                minute=0,
+                second=0,
+            )
+            + datetime.timedelta(hours=i)
+        )
+        if measurement_dt > threshold_dt:
+            break
+
+        logging.info(f"{measurement_dt}: {usage}")
+        ts = tz.localize(measurement_dt).isoformat("T")
+        influx_data.append(
+            {
+                "measurement": "Generation",
+                "time": ts,
+                "fields": {"kWH": float(usage)},
+            }
+        )
+
+    for i, usage in enumerate(
+        periodic_data["selectedPeriod"]["costData"]["peak"]
+    ):
+        measurement_dt = (
+            datetime.datetime(
+                day=measurement_base_dt.day,
+                month=measurement_base_dt.month,
+                year=measurement_base_dt.year,
+                hour=0,
+                minute=0,
+                second=0,
+            )
+            + datetime.timedelta(hours=i)
+        )
+        if measurement_dt > threshold_dt:
+            break
+
+        logging.info(f"{measurement_dt}: {usage}")
+        ts = tz.localize(measurement_dt).isoformat("T")
+        influx_data.append(
+            {
+                "measurement": "GridCost",
+                "time": ts,
+                "fields": {"$": float(usage)},
+            }
+        )
+
+    for i, usage in enumerate(
+        periodic_data["selectedPeriod"]["costData"]["generation"]
+    ):
+        measurement_dt = (
+            datetime.datetime(
+                day=measurement_base_dt.day,
+                month=measurement_base_dt.month,
+                year=measurement_base_dt.year,
+                hour=0,
+                minute=0,
+                second=0,
+            )
+            + datetime.timedelta(hours=i)
+        )
+        if measurement_dt > threshold_dt:
+            break
+
+        logging.info(f"{measurement_dt}: {usage}")
+        ts = tz.localize(measurement_dt).isoformat("T")
+        influx_data.append(
+            {
+                "measurement": "GenerationCost",
+                "time": ts,
+                "fields": {"$": float(usage)},
+            }
+        )
+
     return influx_data
 
 
