@@ -15,7 +15,7 @@ class LatestTriggerResponse:
 
 
 def do_login(user: str, password: str, s: Session, base_url: str):
-    res = s.get(f"{base_url}/electricityView/index")
+    res = s.get(f"{base_url}/login/index")
     must_login = "Sign In" in res.text
 
     if must_login:
@@ -23,7 +23,7 @@ def do_login(user: str, password: str, s: Session, base_url: str):
         data = {
             "login_email": user,
             "login_password": password,
-            "submit": "Sign+In",
+            "loginButton": "Sign+In",
         }
         res = s.post(f"{base_url}/login_security_check", data=data)
         res.raise_for_status()
